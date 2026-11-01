@@ -6,7 +6,10 @@ import { site, socials, pageMeta } from '../lib/site'
 export const Route = createFileRoute('/contact')({
   component: Contact,
   head: () =>
-    pageMeta('Contact', 'Commissions, collaborations and print enquiries.'),
+    pageMeta(
+      'Contact',
+      `Contact ${site.name} about roles, projects, or collaboration.`,
+    ),
 })
 
 function Contact() {
@@ -18,7 +21,7 @@ function Contact() {
           {site.availability}
         </p>
         <h1 className="display text-[clamp(4.5rem,16vw,15rem)]">
-          Say <em className="text-safelight">hello.</em>
+          Let’s <em className="text-safelight">talk.</em>
         </h1>
         <a
           href={`mailto:${site.email}`}
@@ -31,7 +34,7 @@ function Contact() {
       <div className="grid gap-16 lg:grid-cols-12">
         <section aria-labelledby="write" className="lg:col-span-7">
           <h2 id="write" className="label mb-8 text-safelight">
-            (01) Write to me
+            (01) Send a message
           </h2>
           <ContactForm />
         </section>
@@ -69,28 +72,28 @@ function Contact() {
 
           <section aria-labelledby="studio">
             <h2 id="studio" className="label mb-6 text-safelight">
-              (03) The studio
+              (03) Contact details
             </h2>
             <address className="not-italic text-lg leading-relaxed">
-              Rua do Açúcar 41, 2º
+              <a
+                className="link-underline"
+                href={`tel:${site.phone.replace(/\s/g, '')}`}
+              >
+                {site.phone}
+              </a>
               <br />
-              1950-009 Marvila, Lisbon
-              <br />
-              <span className="label text-ink/60">
-                Visits by appointment — the coffee is good.
-              </span>
+              <span className="label text-ink/60">{site.location}</span>
             </address>
           </section>
 
           <section aria-labelledby="good-fit" className="bg-ink text-paper p-6">
             <h2 id="good-fit" className="label mb-4 text-paper/60">
-              Good to include
+              Helpful context
             </h2>
             <ul className="space-y-2 text-lg">
-              <li>→ What you’re making</li>
-              <li>→ When it needs to exist</li>
-              <li>→ A rough budget</li>
-              <li>→ One thing you love the look of</li>
+              <li>→ The role, project, or problem</li>
+              <li>→ Relevant technologies or constraints</li>
+              <li>→ Timeline and next steps</li>
             </ul>
           </section>
         </aside>

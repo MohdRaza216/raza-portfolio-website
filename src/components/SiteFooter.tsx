@@ -7,12 +7,14 @@ export function SiteFooter() {
     <footer className="bg-ink text-paper mt-32">
       <div className="film-edge" />
       <div className="px-5 md:px-8 pt-16 pb-10">
-        <p className="label text-paper/50 mb-6">End of roll — frame 36</p>
+        <p className="label text-paper/50 mb-6">
+          Full-stack development · Mumbai, India
+        </p>
         <Link
           to="/contact"
           className="display group block text-[clamp(3.5rem,13vw,13rem)] hover:text-safelight transition-colors"
         >
-          Let’s make
+          Let’s build
           <br />
           <em>something.</em>
           <ArrowUpRight

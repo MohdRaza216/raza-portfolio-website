@@ -46,8 +46,7 @@ export function ContactForm() {
             Message received
           </h2>
           <p role="status" className="text-lg mb-8">
-            Thank you — it’s pinned to the wall. I reply to everything within
-            two working days.
+            Thank you for reaching out. I’ll get back to you as soon as I can.
           </p>
           <button
             type="button"
@@ -106,7 +105,7 @@ export function ContactForm() {
                 required
                 maxLength={254}
                 className="contact-input"
-                placeholder="you@studio.com"
+                placeholder="you@example.com"
               />
             </div>
             <div>
@@ -120,7 +119,7 @@ export function ContactForm() {
                 maxLength={5000}
                 rows={6}
                 className="contact-input"
-                placeholder="A book, a brand, a wall — tell me about it…"
+                placeholder="Tell me about the role, project, or question..."
               />
             </div>
             <button type="submit" className="contact-button">

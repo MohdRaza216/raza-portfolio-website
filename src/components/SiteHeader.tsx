@@ -3,9 +3,9 @@ import { Link } from '@tanstack/react-router'
 import { site } from '../lib/site'
 
 const links = [
-  { to: '/', label: 'Index' },
-  { to: '/projects', label: 'Work' },
-  { to: '/gallery', label: 'Gallery' },
+  { to: '/', label: 'Home' },
+  { to: '/projects', label: 'Projects' },
+  { to: '/skills', label: 'Skills' },
   { to: '/about', label: 'About' },
   { to: '/contact', label: 'Contact' },
 ] as const
@@ -39,7 +39,7 @@ export function SiteHeader() {
           to="/"
           className="display text-2xl leading-none whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-safelight"
         >
-          Wren <em className="text-safelight">C.</em>
+          Raza <em className="text-safelight">M.</em>
         </Link>
         <StudioClock />
         <nav

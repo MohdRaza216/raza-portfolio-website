@@ -1,34 +1,28 @@
 export const site = {
-  name: 'Wren Calloway',
-  role: 'Visual designer & photographer',
-  location: 'Lisbon, PT',
-  timeZone: 'Europe/Lisbon',
-  email: 'hello@wrencalloway.studio',
-  availability: 'Booking commissions from January 2027',
+  name: 'Mohammed Raza Moghul',
+  role: 'Full-stack developer',
+  location: 'Mumbai, India',
+  timeZone: 'Asia/Kolkata',
+  email: 'mohdrazamoghul2024@gmail.com',
+  phone: '+91 91675 84652',
+  availability: 'Open to full-stack developer opportunities',
   description:
-    'Wren Calloway is a visual designer and photographer making books, identities and exhibitions out of a small studio in Lisbon.',
+    'Mohammed Raza Moghul is a full-stack developer building Laravel applications, APIs, and responsive web experiences.',
   summary:
-    'I make things that get printed, pinned to walls and held in hands — identities, photobooks, exhibitions — and the photographs that start most of them.',
+    'I build and ship web applications across the stack, with a focus on PHP, Laravel, RESTful APIs, responsive interfaces, and reliable MySQL performance.',
 }
 
 export const socials = [
   {
-    label: 'Instagram',
-    handle: '@wren.calloway',
-    href: 'https://instagram.com/',
-  },
-  { label: 'Are.na', handle: 'wren-calloway', href: 'https://www.are.na/' },
-  {
-    label: 'Behance',
-    handle: 'wrencalloway',
-    href: 'https://www.behance.net/',
+    label: 'GitHub',
+    handle: 'mohdrazamoghul',
+    href: 'https://github.com/mohdrazamoghul',
   },
   {
     label: 'LinkedIn',
-    handle: 'in/wrencalloway',
-    href: 'https://www.linkedin.com/',
+    handle: 'in/mohammed-raza-moghul',
+    href: 'https://www.linkedin.com/in/mohammed-raza-moghul',
   },
-  { label: 'Read.cv', handle: 'wren', href: 'https://read.cv/' },
 ] as const
 
 export function pageMeta(title: string, description: string) {

@@ -13,6 +13,13 @@ const date = z
       parsed.toISOString().slice(0, 10) === value
     )
   }, 'Use a valid YYYY-MM-DD calendar date')
+const educationDate = z.union([
+  date,
+  z
+    .string()
+    .regex(/^\d{4}$/)
+    .refine((value) => Number(value) >= 1900 && Number(value) <= 2100),
+])
 const slug = text.regex(/^[a-zA-Z0-9]+(?:[-_][a-zA-Z0-9]+)*$/)
 const tags = z.array(text).default([])
 const url = z.url({ protocol: /^https?$/ })
@@ -35,7 +42,14 @@ export const jobSchema = z
   })
   .refine(validRange, 'End date must not precede start date')
 export const educationSchema = z
-  .object({ ...datedFields, school: text })
+  .object({
+    summary: text,
+    startDate: educationDate,
+    endDate: educationDate.optional(),
+    tags,
+    content: z.string(),
+    school: text,
+  })
   .refine(validRange, 'End date must not precede start date')
 export const blogSchema = z.object({
   title: text,

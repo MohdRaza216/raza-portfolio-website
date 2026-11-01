@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertUniqueSlugs,
   blogSchema,
+  educationSchema,
   jobSchema,
   projectSchema,
   renderMarkdown,
@@ -88,6 +89,26 @@ describe('portfolio content', () => {
     ).toBe(false)
     expect(
       projectSchema.safeParse({ ...project, github: 'not-a-url' }).success,
+    ).toBe(false)
+  })
+  it('accepts year-only education dates without inventing month precision', () => {
+    expect(
+      educationSchema.safeParse({
+        school: 'Atharva University',
+        summary: 'Bachelor of Technology (B.Tech)',
+        startDate: '2020',
+        endDate: '2024',
+        content: '',
+      }).success,
+    ).toBe(true)
+    expect(
+      educationSchema.safeParse({
+        school: 'Atharva University',
+        summary: 'Bachelor of Technology (B.Tech)',
+        startDate: '0000',
+        endDate: '2024',
+        content: '',
+      }).success,
     ).toBe(false)
   })
   it('orders current experience first, then recent dates, with stable ties and no mutation', () => {
