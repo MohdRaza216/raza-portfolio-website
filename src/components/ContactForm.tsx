@@ -1,32 +1,46 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { Mail, Send } from 'lucide-react'
+import {
+  emailJsSetupMessage,
+  emailJsTimeoutMessage,
+  isEmailJsConfigured,
+  sendContactEmail,
+} from '../lib/emailjs'
 
 export function ContactForm() {
   const [status, setStatus] = useState<
     'idle' | 'pending' | 'error' | 'success'
   >('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const submitting = useRef(false)
+  const configured = isEmailJsConfigured()
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (submitting.current || status === 'success') return
-    const body = new URLSearchParams()
-    new FormData(event.currentTarget).forEach((value, key) =>
-      body.append(key, String(value)),
-    )
+    if (!configured) {
+      setErrorMessage(emailJsSetupMessage)
+      setStatus('error')
+      return
+    }
+
+    const formData = new FormData(event.currentTarget)
     submitting.current = true
+    setErrorMessage('')
     setStatus('pending')
     try {
-      const response = await fetch('/contact.html', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-        signal: AbortSignal.timeout(15000),
+      await sendContactEmail({
+        name: String(formData.get('name') ?? ''),
+        email: String(formData.get('email') ?? ''),
+        message: String(formData.get('message') ?? ''),
       })
-      if (!response.ok || /\bdata-netlify\s*=/i.test(await response.text()))
-        throw new Error('Message was not accepted')
       setStatus('success')
-    } catch {
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error && error.message === emailJsTimeoutMessage
+          ? error.message
+          : 'Your message couldn’t be sent. Please check your connection and try again.',
+      )
       setStatus('error')
     } finally {
       submitting.current = false
@@ -60,20 +74,18 @@ export function ContactForm() {
         <form
           name="contact"
           method="POST"
-          action="/contact.html"
-          data-netlify="true"
-          netlify-honeypot="bot-field"
           aria-busy={status === 'pending'}
           onSubmit={submit}
           className="space-y-8"
         >
-          <input type="hidden" name="form-name" value="contact" />
-          <p hidden>
-            <label>
-              Leave this empty
-              <input name="bot-field" tabIndex={-1} autoComplete="off" />
-            </label>
-          </p>
+          {!configured && (
+            <p
+              role="alert"
+              className="border-l-2 border-safelight pl-4 text-safelight"
+            >
+              {status === 'error' ? errorMessage : emailJsSetupMessage}
+            </p>
+          )}
           <fieldset
             disabled={status === 'pending'}
             className="min-w-0 space-y-8 disabled:opacity-60"
@@ -122,7 +134,11 @@ export function ContactForm() {
                 placeholder="Tell me about the role, project, or question..."
               />
             </div>
-            <button type="submit" className="contact-button">
+            <button
+              type="submit"
+              disabled={!configured}
+              className="contact-button"
+            >
               <Send aria-hidden="true" size={16} />
               {status === 'pending' ? 'Sending…' : 'Send message'}
             </button>
@@ -130,13 +146,12 @@ export function ContactForm() {
           <p role="status" className="sr-only">
             {status === 'pending' ? 'Sending your message…' : ''}
           </p>
-          {status === 'error' && (
+          {status === 'error' && configured && (
             <p
               role="alert"
               className="border-l-2 border-safelight pl-4 text-safelight"
             >
-              We couldn’t confirm your message. Your details are still here;
-              please try again. Local previews don’t process submissions.
+              {errorMessage}
             </p>
           )}
         </form>

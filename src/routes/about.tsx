@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { allEducations, allJobs } from 'content-collections'
 import { ArrowRight } from 'lucide-react'
+import { Photo } from '../components/Photo'
 import { chronologicalEntries } from '../lib/chronology'
 import { site, pageMeta } from '../lib/site'
+
+const aboutImage = '/img/raza-moghul.png'
 
 export const Route = createFileRoute('/about')({
   component: About,
@@ -74,7 +77,7 @@ function About() {
   return (
     <div className="px-5 md:px-8 pt-12">
       <section className="grid gap-12 md:grid-cols-12 items-start">
-        <div className="md:col-span-9">
+        <div className="md:col-span-7">
           <p className="label mb-6">
             About · {site.role} · {site.location}
           </p>
@@ -83,6 +86,20 @@ function About() {
             database to interface.
           </h1>
         </div>
+        <figure className="md:col-span-4 md:col-start-9 develop">
+          <Photo
+            src={aboutImage}
+            alt={`Portrait of ${site.name}`}
+            width={768}
+            height={1024}
+            priority
+            sizes="(min-width: 768px) 33vw, 100vw"
+          />
+          <figcaption className="label mt-2 flex justify-between">
+            <span>{site.name}</span>
+            <span className="text-ink/50">{site.location}</span>
+          </figcaption>
+        </figure>
       </section>
 
       <section className="mt-24 grid gap-10 md:grid-cols-12">

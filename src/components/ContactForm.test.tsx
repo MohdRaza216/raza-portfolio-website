@@ -2,13 +2,36 @@ import { readFileSync } from 'node:fs'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  emailJsSetupMessage,
+  emailJsTimeoutMessage,
+  emailJsTimeoutMs,
+} from '../lib/emailjs'
 import { ContactForm } from './ContactForm'
+
+const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }))
+
+vi.mock('@emailjs/browser', () => ({ send: sendMock }))
 
 afterEach(() => {
   cleanup()
-  vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
   vi.restoreAllMocks()
+  vi.useRealTimers()
+  sendMock.mockReset()
 })
+
+function configureEmailJs() {
+  vi.stubEnv('VITE_EMAILJS_SERVICE_ID', 'service_test')
+  vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', 'template_test')
+  vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', 'public_test')
+}
+
+function clearEmailJsConfig() {
+  vi.stubEnv('VITE_EMAILJS_SERVICE_ID', '')
+  vi.stubEnv('VITE_EMAILJS_TEMPLATE_ID', '')
+  vi.stubEnv('VITE_EMAILJS_PUBLIC_KEY', '')
+}
 
 async function fillForm() {
   render(<ContactForm />)
@@ -23,170 +46,187 @@ async function fillForm() {
 }
 
 describe('contact delivery', () => {
-  it('sends registered fields and confirms an accepted response', async () => {
-    const fetch = vi.fn().mockResolvedValue(new Response('Accepted'))
-    vi.stubGlobal('fetch', fetch)
+  it('shows setup instructions and blocks submissions without EmailJS configuration', () => {
+    clearEmailJsConfig()
+    render(<ContactForm />)
+    expect(screen.getByRole('alert').textContent).toContain(emailJsSetupMessage)
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Send message',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    'VITE_EMAILJS_SERVICE_ID',
+    'VITE_EMAILJS_TEMPLATE_ID',
+    'VITE_EMAILJS_PUBLIC_KEY',
+  ])('does not send when %s is missing', (key) => {
+    configureEmailJs()
+    vi.stubEnv(key, '')
+    render(<ContactForm />)
+
+    expect(screen.getByRole('alert').textContent).toContain(emailJsSetupMessage)
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Send message',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('sends the entered fields with EmailJS and confirms delivery', async () => {
+    configureEmailJs()
+    sendMock.mockResolvedValue({ status: 200, text: 'OK' })
     const user = await fillForm()
     await user.click(screen.getByRole('button', { name: 'Send message' }))
     await screen.findByRole('heading', { name: 'Message received' })
-    const [url, init] = fetch.mock.calls[0]
-    expect(url).toBe('/contact.html')
-    expect(init.method).toBe('POST')
-    expect(init.headers['Content-Type']).toBe(
-      'application/x-www-form-urlencoded',
+
+    expect(sendMock).toHaveBeenCalledWith(
+      'service_test',
+      'template_test',
+      {
+        name: 'Jane Doe',
+        email: 'jane@example.com',
+        reply_to: 'jane@example.com',
+        message: 'A project question & some details.',
+      },
+      { publicKey: 'public_test' },
     )
-    expect(Object.fromEntries(new URLSearchParams(init.body))).toEqual({
-      'form-name': 'contact',
-      'bot-field': '',
-      name: 'Jane Doe',
-      email: 'jane@example.com',
-      message: 'A project question & some details.',
-    })
+    expect(screen.queryByRole('alert')).toBeNull()
     await user.click(
       screen.getByRole('button', { name: 'Send another message' }),
     )
     expect(screen.getByLabelText('Name')).toBeTruthy()
   })
 
-  it.each([400, 500])(
-    'keeps all inputs after HTTP %s and supports retry',
-    async (status) => {
-      const fetch = vi
-        .fn()
-        .mockResolvedValueOnce(new Response('', { status }))
-        .mockResolvedValueOnce(new Response('Accepted'))
-      vi.stubGlobal('fetch', fetch)
-      const user = await fillForm()
-      await user.click(screen.getByRole('button', { name: 'Send message' }))
-      await screen.findByRole('alert')
-      expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe(
-        'Jane Doe',
-      )
-      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(
-        'jane@example.com',
-      )
-      expect(
-        (screen.getByLabelText('Message') as HTMLTextAreaElement).value,
-      ).toBe('A project question & some details.')
-      expect(
-        screen.queryByRole('heading', { name: 'Message received' }),
-      ).toBeNull()
-      await user.click(screen.getByRole('button', { name: 'Send message' }))
-      await screen.findByRole('heading', { name: 'Message received' })
-      expect(fetch.mock.calls[1][1].body).toBe(fetch.mock.calls[0][1].body)
-    },
-  )
+  it('fails clearly when submission starts without configuration', () => {
+    clearEmailJsConfig()
+    render(<ContactForm />)
+    const form = screen
+      .getByRole('button', { name: 'Send message' })
+      .closest('form')!
 
-  it('handles network failure and retry', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockRejectedValueOnce(new TypeError('Offline'))
-        .mockResolvedValueOnce(new Response('Accepted')),
-    )
-    const user = await fillForm()
-    await user.click(screen.getByRole('button', { name: 'Send message' }))
-    await screen.findByRole('alert')
-    await user.click(screen.getByRole('button', { name: 'Send message' }))
-    await screen.findByRole('heading', { name: 'Message received' })
+    act(() => fireEvent.submit(form))
+
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('alert').textContent).toContain(emailJsSetupMessage)
+    expect(sendMock).not.toHaveBeenCalled()
   })
 
-  it('blocks synchronous duplicates and keeps success hidden until the request completes', async () => {
-    let resolve!: (response: Response) => void
-    const fetch = vi.fn().mockReturnValue(
-      new Promise<Response>((done) => {
+  it('keeps entered fields after an EmailJS error and supports retry', async () => {
+    configureEmailJs()
+    sendMock
+      .mockRejectedValueOnce(new Error('EmailJS service unavailable'))
+      .mockResolvedValueOnce({ status: 200, text: 'OK' })
+    const user = await fillForm()
+
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+    await screen.findByRole('alert')
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe(
+      'Jane Doe',
+    )
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(
+      'jane@example.com',
+    )
+    expect(
+      (screen.getByLabelText('Message') as HTMLTextAreaElement).value,
+    ).toBe('A project question & some details.')
+
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+    await screen.findByRole('heading', { name: 'Message received' })
+    expect(sendMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('blocks synchronous duplicates while the EmailJS request is pending', async () => {
+    configureEmailJs()
+    let resolve!: (response: { status: number; text: string }) => void
+    sendMock.mockReturnValue(
+      new Promise((done) => {
         resolve = done
       }),
     )
-    vi.stubGlobal('fetch', fetch)
     await fillForm()
     const form = screen
       .getByRole('button', { name: 'Send message' })
       .closest('form')!
+
     act(() => {
       fireEvent.submit(form)
       fireEvent.submit(form)
     })
-    expect(fetch).toHaveBeenCalledTimes(1)
+
+    expect(sendMock).toHaveBeenCalledTimes(1)
     expect(form.getAttribute('aria-busy')).toBe('true')
     expect(screen.getByRole('group').hasAttribute('disabled')).toBe(true)
     expect(screen.getByRole('button', { name: 'Sending…' })).toBeTruthy()
-    expect(
-      screen.queryByRole('heading', { name: 'Message received' }),
-    ).toBeNull()
-    await act(async () => resolve(new Response('Accepted')))
+    await act(async () => resolve({ status: 200, text: 'OK' }))
     expect(
       screen.getByRole('heading', { name: 'Message received' }),
     ).toBeTruthy()
   })
 
-  it('rejects unprocessed registration HTML returned by a local preview', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(readFileSync('public/contact.html', 'utf8')),
-        ),
+  it('times out a pending request and safely handles a later rejection', async () => {
+    configureEmailJs()
+    vi.useFakeTimers()
+    let reject!: (reason: Error) => void
+    sendMock.mockReturnValue(
+      new Promise((_resolve, rejectRequest) => {
+        reject = rejectRequest
+      }),
     )
-    const user = await fillForm()
-    await user.click(screen.getByRole('button', { name: 'Send message' }))
-    await screen.findByRole('alert')
-    expect(
-      screen.queryByRole('heading', { name: 'Message received' }),
-    ).toBeNull()
-  })
+    render(<ContactForm />)
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'Jane Doe' },
+    })
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'jane@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText('Message'), {
+      target: { value: 'A project question & some details.' },
+    })
 
-  it('re-enables the form after a timeout', async () => {
-    const controller = new AbortController()
-    const timeout = vi
-      .spyOn(AbortSignal, 'timeout')
-      .mockReturnValue(controller.signal)
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation(
-        (_url, init) =>
-          new Promise((_resolve, reject) => {
-            init.signal.addEventListener('abort', () =>
-              reject(init.signal.reason),
-            )
-          }),
-      ),
+    await act(async () => {
+      fireEvent.submit(
+        screen.getByRole('button', { name: 'Send message' }).closest('form')!,
+      )
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(emailJsTimeoutMs)
+    })
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      emailJsTimeoutMessage,
     )
-    const user = await fillForm()
-    await user.click(screen.getByRole('button', { name: 'Send message' }))
-    expect(timeout).toHaveBeenCalledWith(15000)
-    await act(async () => controller.abort())
-    await screen.findByRole('alert')
+    await act(async () => {
+      reject(new Error('late EmailJS failure'))
+      await Promise.resolve()
+    })
     expect(screen.getByRole('group').hasAttribute('disabled')).toBe(false)
   })
 
-  it('keeps static registration, form identity and honeypot aligned', () => {
+  it('keeps static and interactive form fields aligned without registering Netlify Forms', () => {
     const { container } = render(<ContactForm />)
     const form = container.querySelector('form')!
-    const registration = new DOMParser()
+    const staticForm = new DOMParser()
       .parseFromString(readFileSync('public/contact.html', 'utf8'), 'text/html')
       .querySelector('form')!
-    for (const attribute of [
-      'name',
-      'method',
-      'data-netlify',
-      'netlify-honeypot',
-    ])
-      expect(form.getAttribute(attribute)).toBe(
-        registration.getAttribute(attribute),
-      )
+
+    expect(form.getAttribute('name')).toBe(staticForm.getAttribute('name'))
+    expect(form.getAttribute('method')).toBe(staticForm.getAttribute('method'))
+    expect(form.hasAttribute('data-netlify')).toBe(false)
+    expect(staticForm.hasAttribute('data-netlify')).toBe(false)
+
     const fields = (element: Element) =>
       [...element.querySelectorAll('[name]')]
         .map((field) => field.getAttribute('name'))
         .sort()
-    expect(fields(form)).toEqual(fields(registration))
-    expect(
-      form.querySelector('[name="form-name"]')?.getAttribute('value'),
-    ).toBe(registration.getAttribute('name'))
-    expect(form.querySelector('[name="bot-field"]')?.closest('p')?.hidden).toBe(
-      true,
-    )
+
+    expect(fields(form)).toEqual(fields(staticForm))
+    expect(fields(form)).toEqual(['email', 'message', 'name'])
   })
 })

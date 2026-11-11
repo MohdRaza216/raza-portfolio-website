@@ -22,7 +22,8 @@ Projects, Skills, About, and Contact pages and is deployed to Netlify.
 - Corners are square, borders are 1px ink, section labels use mono `.label`,
   and headlines use `.display` with an `<em>` for emphasis.
 - Animations respect `prefers-reduced-motion`.
-- The contact form fields must stay in sync with `public/contact.html` (see
-  `ContactForm.test.tsx`). Netlify Forms is enabled through the feature marker.
+- The EmailJS contact form fields must stay in sync with the static form in
+  `public/contact.html` (see `ContactForm.test.tsx`). Configure EmailJS using
+  the variables in `.env.example`; never commit `.env` files.
 - Run dev or build once to generate `src/routeTree.gen.ts` and
   `.content-collections/` before typechecking.

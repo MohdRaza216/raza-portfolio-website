@@ -1,4 +1,13 @@
 node_modules
 
+.env
+.env.*
+!.env.example
+
 # Local Netlify folder
 .netlify
+
+dist/
+.netlify/
+.tanstack/
+*.zip
